@@ -45,9 +45,7 @@ int socket_descriptor_create(void)  {
   if((socketDescriptor = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)  {
     perror("nie udalo sie utworzyc gniazda");
     exit(1);
-    } else  {
-    return socketDescriptor;
-    }
+    } else return socketDescriptor;
 
 
 }
@@ -60,9 +58,8 @@ void connection_creator(struct sockaddr_in serverAddress)  {
   if(connect(socketDescriptor, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0 )  {
       perror( "nie mozna nawiazac polaczania z serwerem" );
       exit(1);
-  } else {
-   connectionHandler(socketDescriptor);
   }
+  else connectionHandler(socketDescriptor);
 
 
 }
@@ -132,7 +129,8 @@ pid_t connectionHandler(int socket)  {
         fflush( stdout );
       memset(buffer,0,__BUFFER_SIZE);
       }
-    } else  {
+    }
+  else  {
     sleep(1);
     while(1)  {
       strTemp = fgets( buffer, __BUFFER_SIZE, stdin );
@@ -175,26 +173,39 @@ void get_file(struct cmdStruct* commands, int socket)  {
   char* writeModeText = "wt";
   char* writeModeBinary = "wr";
 
-  if(!strncmp(commands->words[2],"-b",2) || !strncmp(commands->words[2],"--binary",8)) writeMode = writeModeBinary;
-  else writeMode = writeModeText;                                                /*domyslny tryb transferu :tekstowy*/
-  if((fileStream = fopen(commands->words[1],writeMode)) == NULL)  {
-    statTemp = write(socket,errorMsg1,strlen(errorMsg1));
-    }
-  else  {
-    printf("start processing...\n");
-    while((recvSize = recv(socket, writeBuffer, __BUFFER_SIZE, 0)) > 0) {
-      writeSize = fwrite(writeBuffer, sizeof(char), recvSize, fileStream);
-      if(recvSize != writeSize) statTemp = write(socket, errorMsg2, strlen(errorMsg2));
-      remove(commands->words[2]);
-      printf("blad transferu\n");
-      break;
+  if(commands->wordCount >= 2)  {
+    if(!strncmp(commands->words[2],"-b",2) || !strncmp(commands->words[2],"--binary",8)) writeMode = writeModeBinary;
+    else if(commands->wordCount < 3 || !strncmp(commands->words[2],"-t",2) || !strncmp(commands->words[2],"--text",8)) writeMode = writeModeText;                                                /*domyslny tryb transferu :tekstowy*/
+    recvSize = recv(socket, writeBuffer, __BUFFER_SIZE, MSG_PEEK);
+    if(strncmp("Serwer: Nie udalo sie otworzyc pliku\n",writeBuffer, 30))  {
+      if((fileStream = fopen(commands->words[1], writeMode)) == NULL)  {
+        statTemp = write(socket,errorMsg1,strlen(errorMsg1));
+        }
+      else  {
+        while((recvSize = recv(socket, writeBuffer, __BUFFER_SIZE, 0)) > 0)  {
+        writeSize = fwrite(writeBuffer, sizeof(char), recvSize, fileStream);
+        if(recvSize != writeSize)  {
+          remove(commands->words[2]);
+          printf("blad transferu\n");
+          break;
+          }
+        }
+        fclose(fileStream);
+        close(socket);
       }
-    printf("kjkjslk\n");
-    fclose(fileStream);
     }
+    else  {
+      printf("podany plik nie istnieje!\n");
+      close(socket);
+      }
+  }
+  else  printf("za malo argumentow\n");
+
 
 
 }
+
+
 
 
 void put_file(struct cmdStruct* commands, int socket)  {
@@ -208,19 +219,21 @@ void put_file(struct cmdStruct* commands, int socket)  {
   char* readMode;
   int a = 0;
 
-  if(commands->wordCount < 3 || !strncmp(commands->words[2],"-t",2) || !strncmp(commands->words[2],"--text",8)) readMode = readModeText;
-  else if(!strncmp(commands->words[2],"-b",2) || !strncmp(commands->words[2],"--binary",8)) readMode = readModeBinary;
-  fflush(stdout);
-  if((fileStream = fopen(commands->words[1],readMode)) == NULL)  {
-    printf("%s",errorMsg);
-    } else  {
-    while((readSize = fread(readBuffer, sizeof(char), __BUFFER_SIZE, fileStream)) > 0)  {
-      send(socket, readBuffer, readSize, 0);
-      }
+  if(commands->wordCount >= 2)  {
+    if(commands->wordCount < 3 || !strncmp(commands->words[2],"-t",2) || !strncmp(commands->words[2],"--text",8)) readMode = readModeText;
+    else if(!strncmp(commands->words[2],"-b",2) || !strncmp(commands->words[2],"--binary",8)) readMode = readModeBinary;
+    if((fileStream = fopen(commands->words[1],readMode)) == NULL)  {
+      printf("%s",errorMsg);
+      } else  {
+      while((readSize = fread(readBuffer, sizeof(char), __BUFFER_SIZE, fileStream)) > 0)  {
+        send(socket, readBuffer, readSize, 0);
+        }
       fclose(fileStream);
       shutdown(socket, 1);
       printf("Zakonczono wysylanie pliku. ponowne laczenie...\n");
+      }
     }
+  else printf("za malo argumentow\n");
 
 
 }

@@ -13,7 +13,7 @@
 
 
 
-#define __BUFFER_SIZE 1024
+#define __BUFFER_SIZE 2048
 
 int socketKill;
 pid_t readerPid;
