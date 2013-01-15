@@ -1,6 +1,5 @@
 #include "header.h"
 
-
 struct sockaddr_in pars_input(int argc_s, char **argv_s) {
 
   int opt;
@@ -124,6 +123,7 @@ pid_t connectionHandler(int socket)  {
     socketKill = socket;
     /*signal( SIGINT, reader_killer );*/
     memset(buffer,0,__BUFFER_SIZE);
+
     while( (readSize = recv( socket, buffer, __BUFFER_SIZE, 0 )) > 0 )  {
       printf("%s", buffer);
       fflush( stdout );
@@ -131,7 +131,6 @@ pid_t connectionHandler(int socket)  {
     }
     exit(0);
   } else  {
-      sleep(1);
       while(1)  {
         strTemp = fgets( buffer, __BUFFER_SIZE, stdin );
         commands = splitter(buffer);
@@ -170,8 +169,7 @@ void get_file(struct cmdStruct* commands, int socket)  {
 
   FILE* fileStream;
   char writeBuffer[__BUFFER_SIZE];
-  int textModeCheck = !strncmp(commands->words[3],"-t",2) || !strncmp(commands->words[3],"--text",8);
-  int binaryModeCheck = !strncmp(commands->words[3],"-b",2) || !strncmp(commands->words[3],"--binary",8);
+
   int recvSize = 0;
   int writeSize = 0;
   short int statTemp;                                                            /* zmienna tylko po to, aby write i fgets mial gdzie zwracac*/
@@ -183,30 +181,42 @@ void get_file(struct cmdStruct* commands, int socket)  {
   char* writeModeBinary = "wr";
   struct stat fileStats;
 
-  if(commands->wordCount == 4 && (binaryModeCheck || textModeCheck))  {
-    if((fileStream = fopen(commands->words[1], writeMode)) == NULL)  {
-      statTemp = write(socket,errorMsg1,strlen(errorMsg1));
-    } else  {
-        while((recvSize = recv(socket, writeBuffer, __BUFFER_SIZE, 0)) > 0)  {
-          writeSize = fwrite(writeBuffer, sizeof(char), recvSize, fileStream);
-          if(recvSize != writeSize)  {
+  fflush(stdout);
+  if(commands->wordCount == 4 )  {
+
+    int textModeCheck = !strncmp(commands->words[3],"-t",2) || !strncmp(commands->words[3],"--text",6);
+    int binaryModeCheck = !strncmp(commands->words[3],"-b",2) || !strncmp(commands->words[3],"--binary",8);
+
+    if(binaryModeCheck || textModeCheck) {
+      if((fileStream = fopen(commands->words[1], writeMode)) == NULL)  {
+        statTemp = write(socket,errorMsg1,strlen(errorMsg1));
+      } else  {
+          while((recvSize = recv(socket, writeBuffer, __BUFFER_SIZE, 0)) > 0)  {
+            writeSize = fwrite(writeBuffer, sizeof(char), recvSize, fileStream);
+            if(recvSize != writeSize)  {
+              remove(commands->words[1]);
+              printf("blad transferu\n");
+              break;
+            }
+          }
+          fclose(fileStream);
+          close(socket);
+          stat(commands->words[1], &fileStats);
+          if(!fileStats.st_size)  {
+            printf("Klient: Rozmiar pobranego pliku: %d -> usuwanie...\n", (signed int)fileStats.st_size);
             remove(commands->words[1]);
-            printf("blad transferu\n");
-            break;
+          } else  {
+            printf("Klient: Rozmiar pobranego pliku: %d\n", (signed int)fileStats.st_size);
           }
         }
-        fclose(fileStream);
-        close(socket);
-        stat(commands->words[1], &fileStats);
-        if(!fileStats.st_size)  {
-          printf("Klient: Rozmiar pobranego pliku: %d -> usuwanie...\n", (signed int)fileStats.st_size);
-          remove(commands->words[1]);
-        } else  {
-          printf("Klient: Rozmiar pobranego pliku: %d\n", (signed int)fileStats.st_size);
-        }
+      } else  {
+          printf("Klient: Za malo argumentow\n");
+          close(socket);
       }
-    } else  printf("Klient: Za malo argumentow\n");
-    close(socket);
+      } else  {
+          printf("Klient: Za malo argumentow\n");
+          close(socket);
+      }
 
 
 }
@@ -219,30 +229,39 @@ void put_file(struct cmdStruct* commands, int socket)  {
   FILE* fileStream;
   char readBuffer[__BUFFER_SIZE];
   int readSize = 0;
-  int textModeCheck = !strncmp(commands->words[3],"-t",2) || !strncmp(commands->words[3],"--text",8);
-  int binaryModeCheck = !strncmp(commands->words[3],"-b",2) || !strncmp(commands->words[3],"--binary",8);
   char* errorMsg = "Klient: Nie udalo sie otworzyc pliku\n";
   char* readModeBinary = "rb";
   char* readModeText = "rt";
   char* readMode;
 
-  if(commands->wordCount == 4 && (binaryModeCheck || textModeCheck))  {
-    if(textModeCheck) readMode = readModeText;
-    else if(binaryModeCheck) readMode = readModeBinary;
-    if((fileStream = fopen(commands->words[1],readMode)) == NULL)  {
-      printf("%s",errorMsg);
-    } else  {
-        while((readSize = fread(readBuffer, sizeof(char), __BUFFER_SIZE, fileStream)) > 0)  {
-          send(socket, readBuffer, readSize, 0);
-        }
-        fclose(fileStream);
-        shutdown(socket, 1);
-        printf("Klient: Zakonczono wysylanie pliku. ponowne laczenie...\n");
-    }
-  }
-  else printf("Klient: Za malo argumentow\n");
-  shutdown(socket, 1);
+  if(commands->wordCount == 4) {
 
+    int textModeCheck = !strncmp(commands->words[3],"-t",2) || !strncmp(commands->words[3],"--text",8);
+    int binaryModeCheck = !strncmp(commands->words[3],"-b",2) || !strncmp(commands->words[3],"--binary",8);
+
+      if(binaryModeCheck || textModeCheck) {
+        fflush(stdout);
+        if(textModeCheck) readMode = readModeText;
+        else if(binaryModeCheck) readMode = readModeBinary;
+        if((fileStream = fopen(commands->words[1],readMode)) == NULL)  {
+          printf("%s",errorMsg);
+        } else  {
+            while((readSize = fread(readBuffer, sizeof(char), __BUFFER_SIZE, fileStream)) > 0)  {
+              send(socket, readBuffer, readSize, 0);
+            }
+            fclose(fileStream);
+            shutdown(socket, 1);
+            printf("Klient: Zakonczono wysylanie pliku. ponowne laczenie...\n");
+        }
+      } else  {
+        printf("Nie wybrano trybu przesylania\n");
+        shutdown(socket, 1);
+      }
+  } else {
+      printf("Klient: Za malo argumentow\n");
+      shutdown(socket, 1);
+  }
+  
 }
 
 
