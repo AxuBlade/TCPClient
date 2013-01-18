@@ -12,11 +12,11 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-
-
 #define __BUFFER_SIZE 2048
 
-int socketKill;
+
+int runFlag;
+int socketDescriptor;
 pid_t readerPid;
 int semId;
 

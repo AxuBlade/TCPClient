@@ -1,5 +1,4 @@
+cmake_minimum_required(VERSION 2.8)
 project(tcpclient)
 
-add_executable(tcpclient main.c)
-
-install(TARGETS tcpclient RUNTIME DESTINATION bin)
+add_subdirectory(src)
