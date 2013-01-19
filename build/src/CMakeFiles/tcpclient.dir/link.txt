@@ -1,1 +1,0 @@
-/usr/bin/gcc      CMakeFiles/tcpclient.dir/main.c.o CMakeFiles/tcpclient.dir/connection_handling.c.o CMakeFiles/tcpclient.dir/parsers.c.o  -o tcpclient -rdynamic commands/libcommands.a semaphores/libsemaphores.a 

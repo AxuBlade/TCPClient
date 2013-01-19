@@ -1,2 +1,0 @@
-/usr/bin/ar cr libsemaphores.a  CMakeFiles/semaphores.dir/semaphores.c.o CMakeFiles/semaphores.dir/flags.c.o
-/usr/bin/ranlib libsemaphores.a
