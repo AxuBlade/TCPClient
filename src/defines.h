@@ -23,8 +23,4 @@ struct cmdStruct {                                                             /
   char** words;
   int    wordCount;
 };
-
-void reader_killer (int);
-void put_file(struct cmdStruct*, int);
-void get_file(struct cmdStruct*, int);
-void connect_creator(struct sockaddr_in);
+;

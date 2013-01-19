@@ -22,6 +22,7 @@ struct sockaddr_in pars_input(int argc_s, char** argv_s) {
 
   parsedArgs.sin_addr.s_addr = inet_addr("127.0.0.1");                           /*domyslnie: localhost*/
   parsedArgs.sin_port = htons((short) atoi("13333"));                            /*domyslnie: port 13333*/
+
   while ((opt = getopt_long(argc_s, argv_s, optString, longOpts, NULL )) != -1)  {
     switch (opt)  {
       case 'p':

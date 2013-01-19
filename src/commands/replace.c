@@ -32,6 +32,7 @@ void replace_file(struct cmdStruct* commands, int socket)  {
         else if (binaryModeCheck) readMode = readModeBinary;
         if ((fileStream = fopen(commands->words[1],readMode)) == NULL)  {
           printf("Klient: Nie udalo sie otworzyc pliku\n");
+          shutdown(socket, 1);
         } else  {
             while ((readSize = fread(readBuffer, sizeof(char), __BUFFER_SIZE, fileStream)) > 0)  {
               send(socket, readBuffer, readSize, 0);

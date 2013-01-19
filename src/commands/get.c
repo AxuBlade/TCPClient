@@ -7,8 +7,6 @@
 #include <unistd.h>
 #include "../defines.h"
 #include "commands.h"
-#include "semaphores/semaphores.h"
-#include "semaphores/flags.h"
 
 void get_file(struct cmdStruct* commands, int socket)  {
 
@@ -36,8 +34,6 @@ void get_file(struct cmdStruct* commands, int socket)  {
       if ((fileStream = fopen(commands->words[2], writeMode)) == NULL)  {
         printf("Klient: Nie udalo sie utworzyc pliku\n");
       } else  {
-          int semId = semaphore_create(".", 1);
-          P(semId, 0);
           while ((recvSize = recv(socket, writeBuffer, __BUFFER_SIZE, 0)) > 0)  {
             writeSize = fwrite(writeBuffer, sizeof(char), recvSize, fileStream);
             if (recvSize != writeSize)  {
@@ -51,13 +47,10 @@ void get_file(struct cmdStruct* commands, int socket)  {
           stat(commands->words[2], &fileStats);
           if (!fileStats.st_size)  {
             printf("Klient: Rozmiar pobranego pliku: %d -> usuwanie...\n", (signed int)fileStats.st_size);
-            remove(commands->words[1]);
+            remove(commands->words[2]);
           } else  {
               printf("Klient: Rozmiar pobranego pliku: %d\n", (signed int)fileStats.st_size);
           }
-          V(semId, 0);
-          set_flag(1,0);
-          if (semaphore_value_lookup(semId, 0)) semaphore_remove(semId);
         }
     } else  {
         printf("Klient: Za malo argumentow\n");

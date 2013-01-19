@@ -1,7 +1,6 @@
 #include "defines.h"
 #include "connection_handling.h"
 #include "parsers.h"
-#include "semaphores/flags.h"
 #include <stdio.h>
 #include <signal.h>
 
@@ -10,10 +9,10 @@ int main (int argc, char** argv)  {
   struct sockaddr_in serverAddress;
 
   sigset(SIGINT,sigint_handler);
-  set_flag(0, 1);
+
   serverAddress = pars_input(argc,argv);
   printf("Klient: Łączenie...\n");
-  while (get_flag(0))  {
+  while (1)  {
     connection_creator(serverAddress);
   }
   kill(readerPid, SIGINT);

@@ -13,8 +13,6 @@
 #include "commands/commands.h"
 #include "parsers.h"
 #include "connection_handling.h"
-#include "semaphores/semaphores.h"
-#include "semaphores/flags.h"
 
 int socket_descriptor_create(void)  {
 
@@ -32,19 +30,19 @@ int connection_creator(struct sockaddr_in serverAddress)  {
 
   socketDescriptor = socket_descriptor_create();
 
-  if (connect(socketDescriptor, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0 )  {
-      perror( "Klient: Nie mozna nawiazac polaczania z serwerem" );
-      exit(1);
-  } else  {
-      connectionHandler(socketDescriptor);
-      return socketDescriptor;
-  }
+    if (connect(socketDescriptor, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0 )  {
+        perror( "Klient: Nie mozna nawiazac polaczania z serwerem" );
+        exit(1);
+    } else  {
+        connection_handler(socketDescriptor);
+        return socketDescriptor;
+    }
 
 }
 
 
 
-pid_t connectionHandler(int socket)  {
+void connection_handler(int socket)  {
 
   char buffer[__BUFFER_SIZE];
   int readSize;
@@ -54,19 +52,16 @@ pid_t connectionHandler(int socket)  {
   char* strTemp;
   int childPid;
 
-  set_flag(1,1);
   childPid = fork();
 
-
   if (childPid == 0)  {
-    sigset(SIGINT,reader_kill);
-   memset(buffer,0,__BUFFER_SIZE);
+    sigset(SIGINT, reader_kill);
+    memset(buffer, 0, __BUFFER_SIZE);
     while ((readSize = recv( socket, buffer, __BUFFER_SIZE, 0 )) > 0 )  {
       printf("%s", buffer);
       fflush( stdout );
-      memset(buffer,0,__BUFFER_SIZE);
-
-  }
+      memset(buffer, 0, __BUFFER_SIZE);
+    }
     close(socket);
     exit(0);
   } else  {
@@ -74,42 +69,39 @@ pid_t connectionHandler(int socket)  {
       while (1)  {
         strTemp = fgets( buffer, __BUFFER_SIZE, stdin );
         commands = splitter(buffer);
-        
-       // readSize = recv( socket, buffer, __BUFFER_SIZE, 0);
-       //printf("%s", buffer);
-      //fflush( stdout );
-
-        if (!strncmp(commands->words[0],"put",3))  {
+        if (!strncmp(commands->words[0], "put", 3))  {
+          kill(readerPid, SIGINT);
+          wait(0);
           statTemp = write(socket, buffer, strlen(buffer));
           put_file(commands, socket);
           close(socket);
           break;
         }
-        if (!strncmp(commands->words[0],"replace",7))  {
+        if (!strncmp(commands->words[0], "replace", 7))  {
+          kill(readerPid, SIGINT);
+          wait(0);
           statTemp = write(socket, buffer, strlen(buffer));
           replace_file(commands, socket);
           close(socket);
           break;
         }
-        if (!strncmp(commands->words[0],"get",3))  {
+        if (!strncmp(commands->words[0], "get", 3))  {
           kill(readerPid, SIGINT);
+          wait(0);
           statTemp = write(socket, buffer, strlen(buffer));
           get_file(commands, socket);
-          close(socket);
-          wait(0);
-          set_flag(1,1);
           break;
         }
-        if (!strncmp(commands->words[0],"quit",4))  {
+        if (!strncmp(commands->words[0], "quit", 4))  {
           statTemp = write(socket, buffer, strlen(buffer));
           kill(readerPid, SIGINT);
+          close(socket);
           exit(0);
         }
         else statTemp = write(socket, buffer, strlen(buffer));
       }
     }
     close(socket);
-    return childPid;
 
 }
 
@@ -117,11 +109,12 @@ pid_t connectionHandler(int socket)  {
 void sigint_handler(int signo)  {
   
   kill(readerPid, SIGINT);
-  close(socketDescriptor);
   while(wait(0) != -1) continue;
+  close(socketDescriptor);
   exit(0);
 
 }
-void reader_kill(int signo){
+void reader_kill(int signo)  {
+  close(socketDescriptor);
   exit(0);
 }
