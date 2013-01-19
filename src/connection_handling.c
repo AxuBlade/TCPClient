@@ -13,6 +13,8 @@
 #include "commands/commands.h"
 #include "parsers.h"
 #include "connection_handling.h"
+#include "semaphores/semaphores.h"
+#include "semaphores/flags.h"
 
 int socket_descriptor_create(void)  {
 
@@ -52,48 +54,58 @@ pid_t connectionHandler(int socket)  {
   char* strTemp;
   int childPid;
 
+  set_flag(1,1);
   childPid = fork();
 
 
   if (childPid == 0)  {
-    
-    sigset(SIGINT,sigint_handler);
-   /* memset(buffer,0,__BUFFER_SIZE);
-    while ((readSize = recv( socketDescriptor, buffer, __BUFFER_SIZE, 0 )) > 0 )  {
+    sigset(SIGINT,reader_kill);
+   memset(buffer,0,__BUFFER_SIZE);
+    while ((readSize = recv( socket, buffer, __BUFFER_SIZE, 0 )) > 0 )  {
       printf("%s", buffer);
       fflush( stdout );
       memset(buffer,0,__BUFFER_SIZE);
-      
 
-    }
-    close(socketDescriptor);
-    exit(0);*/
+  }
+    close(socket);
+    exit(0);
   } else  {
       readerPid = childPid;
       while (1)  {
         strTemp = fgets( buffer, __BUFFER_SIZE, stdin );
         commands = splitter(buffer);
-        statTemp = write(socket, buffer, strlen(buffer));
-        close(socket);
-        if (!strncmp(commands->words[0],"quit",4))  {
-          kill(readerPid, SIGINT);
-          exit(0);
-        }
+        
+       // readSize = recv( socket, buffer, __BUFFER_SIZE, 0);
+       //printf("%s", buffer);
+      //fflush( stdout );
+
         if (!strncmp(commands->words[0],"put",3))  {
+          statTemp = write(socket, buffer, strlen(buffer));
           put_file(commands, socket);
           close(socket);
           break;
         }
         if (!strncmp(commands->words[0],"replace",7))  {
+          statTemp = write(socket, buffer, strlen(buffer));
           replace_file(commands, socket);
           close(socket);
           break;
         }
         if (!strncmp(commands->words[0],"get",3))  {
+          kill(readerPid, SIGINT);
+          statTemp = write(socket, buffer, strlen(buffer));
           get_file(commands, socket);
           close(socket);
+          wait(0);
+          set_flag(1,1);
           break;
         }
+        if (!strncmp(commands->words[0],"quit",4))  {
+          statTemp = write(socket, buffer, strlen(buffer));
+          kill(readerPid, SIGINT);
+          exit(0);
+        }
+        else statTemp = write(socket, buffer, strlen(buffer));
       }
     }
     close(socket);
@@ -109,4 +121,7 @@ void sigint_handler(int signo)  {
   while(wait(0) != -1) continue;
   exit(0);
 
+}
+void reader_kill(int signo){
+  exit(0);
 }

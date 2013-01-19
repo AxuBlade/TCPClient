@@ -15,7 +15,6 @@
 #define __BUFFER_SIZE 2048
 
 
-int runFlag;
 int socketDescriptor;
 pid_t readerPid;
 int semId;
