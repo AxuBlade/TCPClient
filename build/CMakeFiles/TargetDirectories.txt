@@ -1,0 +1,3 @@
+/home/axu/projects/TcpClient/build/src/commands/CMakeFiles/commands.dir
+/home/axu/projects/TcpClient/build/src/semaphores/CMakeFiles/semaphores.dir
+/home/axu/projects/TcpClient/build/src/CMakeFiles/tcpclient.dir
